@@ -1,62 +1,21 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
-const ProjectSchema = new mongoose.Schema(
-  {
-    key: {
-      type: String,
-      required: [true, "Please provide a project key (e.g. FLW)"],
-      unique: true,
-      uppercase: true,
-      trim: true,
-    },
+const projectSchema = new mongoose.Schema({
     name: {
-      type: String,
-      required: [true, "Please provide a project name"],
-      trim: true,
+        type: String,
+        required: [true, 'Project name is required'],
+        trim: true,
     },
     description: {
-      type: String,
-      default: "",
+        type: String,
+        trim: true,
+        default: '',
     },
-    projectType: {
-      type: String,
-      enum: ["Software", "Business", "Marketing", "Service Desk", "Other"],
-      default: "Software",
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
     },
-    lead: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-    members: [
-      {
-        user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-        role: {
-          type: String,
-          enum: ["Admin", "Project Manager", "Developer", "Reporter"],
-          default: "Developer",
-        },
-      },
-    ],
-    startDate: {
-      type: Date,
-      default: Date.now,
-    },
-    endDate: {
-      type: Date,
-      default: null,
-    },
-    status: {
-      type: String,
-      enum: ["Active", "Planning", "Completed", "Archived"],
-      default: "Active",
-    },
-    issueCounter: {
-      type: Number,
-      default: 1, // Issues will start from KEY-1 (e.g. FLW-1, FLW-2)
-    },
-  },
-  { timestamps: true }
-);
+}, { timestamps: true });
 
-module.exports = mongoose.model("Project", ProjectSchema);
+module.exports = mongoose.model('Project', projectSchema);
