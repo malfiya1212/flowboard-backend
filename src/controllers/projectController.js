@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const Project = require('../models/Project');
-const Task = require('../models/Task');
+const Task = require('../models/task');
 
 // @desc    Get all projects owned by the logged-in user
 // @route   GET /api/projects

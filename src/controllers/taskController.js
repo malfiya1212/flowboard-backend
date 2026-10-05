@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const Task = require('../models/Task');
+const Task = require('../models/task');
 const Project = require('../models/Project');
 
 // @desc    Create a task inside an owned project
