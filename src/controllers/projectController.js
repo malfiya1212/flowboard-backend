@@ -1,24 +1,33 @@
+const mongoose = require('mongoose');
 const Project = require('../models/Project');
 const Task = require('../models/Task');
 
-// GET /api/projects
+// @desc    Get all projects owned by the logged-in user
+// @route   GET /api/projects
+// @access  Private
 const getProjects = async(req, res) => {
     try {
-        // Only return projects owned by the authenticated user
         const projects = await Project.find({ user: req.user._id }).sort({ createdAt: -1 });
-        res.status(200).json(projects);
+
+        return res.status(200).json(projects);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            message: error.message || 'Failed to retrieve projects.',
+        });
     }
 };
 
-// POST /api/projects
+// @desc    Create a new project tied to the logged-in user
+// @route   POST /api/projects
+// @access  Private
 const createProject = async(req, res) => {
     try {
         const { name, description } = req.body;
 
         if (!name || !name.trim()) {
-            return res.status(400).json({ message: 'Project name is required.' });
+            return res.status(400).json({
+                message: 'Project name is required.',
+            });
         }
 
         const project = await Project.create({
@@ -27,34 +36,64 @@ const createProject = async(req, res) => {
             user: req.user._id,
         });
 
-        res.status(201).json(project);
+        return res.status(201).json(project);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            message: error.message || 'Failed to create project.',
+        });
     }
 };
 
-// GET /api/projects/:id
+// @desc    Get a single project with its associated tasks
+// @route   GET /api/projects/:id
+// @access  Private
 const getProjectById = async(req, res) => {
     try {
-        const project = await Project.findOne({ _id: req.params.id, user: req.user._id });
+        const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(404).json({ message: 'Project not found.' });
+        }
+
+        // Scoped strictly to the logged-in user
+        const project = await Project.findOne({ _id: id, user: req.user._id });
         if (!project) {
             return res.status(404).json({ message: 'Project not found.' });
         }
 
-        // Attach project tasks
-        const tasks = await Task.find({ project: project._id, user: req.user._id }).sort({ createdAt: -1 });
-        res.status(200).json({...project.toObject(), tasks });
+        // Fetch tasks linked to this project and owned by this user
+        const tasks = await Task.find({ project: project._id, user: req.user._id }).sort({
+            createdAt: -1,
+        });
+
+        return res.status(200).json({
+            ...project.toObject(),
+            tasks,
+        });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            message: error.message || 'Failed to retrieve project details.',
+        });
     }
 };
 
-// PATCH /api/projects/:id
+// @desc    Update project name or description
+// @route   PATCH /api/projects/:id
+// @access  Private
 const updateProject = async(req, res) => {
     try {
+        const { id } = req.params;
         const { name, description } = req.body;
-        const project = await Project.findOne({ _id: req.params.id, user: req.user._id });
 
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(404).json({ message: 'Project not found.' });
+        }
+
+        if (name !== undefined && !name.trim()) {
+            return res.status(400).json({ message: 'Project name cannot be empty.' });
+        }
+
+        const project = await Project.findOne({ _id: id, user: req.user._id });
         if (!project) {
             return res.status(404).json({ message: 'Project not found.' });
         }
@@ -63,27 +102,41 @@ const updateProject = async(req, res) => {
         if (description !== undefined) project.description = description.trim();
 
         await project.save();
-        res.status(200).json(project);
+
+        return res.status(200).json(project);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            message: error.message || 'Failed to update project.',
+        });
     }
 };
 
-// DELETE /api/projects/:id
+// @desc    Delete project and cascade delete all its tasks
+// @route   DELETE /api/projects/:id
+// @access  Private
 const deleteProject = async(req, res) => {
     try {
-        const project = await Project.findOneAndDelete({ _id: req.params.id, user: req.user._id });
+        const { id } = req.params;
 
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(404).json({ message: 'Project not found.' });
+        }
+
+        const project = await Project.findOneAndDelete({ _id: id, user: req.user._id });
         if (!project) {
             return res.status(404).json({ message: 'Project not found.' });
         }
 
-        // Cascade delete associated tasks
-        await Task.deleteMany({ project: project._id, user: req.user._id });
+        // Cascade delete: remove all tasks associated with this project and user
+        await Task.deleteMany({ project: id, user: req.user._id });
 
-        res.status(200).json({ message: 'Project and all related tasks deleted successfully.' });
+        return res.status(200).json({
+            message: 'Project and all associated tasks deleted successfully.',
+        });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return res.status(500).json({
+            message: error.message || 'Failed to delete project.',
+        });
     }
 };
 
